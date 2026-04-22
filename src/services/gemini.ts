@@ -1,10 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Booking, HistoricPattern } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+function getAiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  try {
+    return new GoogleGenAI({ apiKey });
+  } catch (error) {
+    console.error("Gemini client initialization error:", error);
+    return null;
+  }
+}
 
 export async function predictCancellation(booking: Partial<Booking>, guestHistory: any[]) {
   try {
+    const ai = getAiClient();
+    if (!ai) {
+      return { probability: 0.1, reason: "GEMINI_API_KEY no configurada, usando baseline." };
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `
@@ -34,6 +51,11 @@ export async function predictCancellation(booking: Partial<Booking>, guestHistor
 
 export async function identifyDemandPatterns(historicBookings: any[]) {
   try {
+    const ai = getAiClient();
+    if (!ai) {
+      return [];
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `
