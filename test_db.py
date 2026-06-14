@@ -9,7 +9,7 @@ password = 'Aegon25?' # Borra los corchetes y pon tu contraseña real
 driver = '{ODBC Driver 18 for SQL Server}' # Puede ser 17 o 18 dependiendo de tu equipo
 
 # Armamos el string de conexión (basado en el formato ODBC)
-connection_string = f'DRIVER={driver};SERVER={server};PORT=1433;DATABASE={database};UID={username};PWD={password}'
+connection_string = f'DRIVER={driver};SERVER={server};PORT=1433;DATABASE={database};UID={username};PWD={password};Timeout=30;'
 
 try:
     # Intentamos conectar
