@@ -6,6 +6,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Ruta de prueba para saber si el servidor está vivo
+app.get('/', (req, res) => {
+    res.send('Backend de Lumina funcionando perfectamente en Azure 🚀');
+});
+
 // 1. Configuración de tu base de datos en Azure SQL
 const dbConfig = {
     user: 'CloudSAf5c38632',
