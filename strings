@@ -1,0 +1,1 @@
+Driver={ODBC Driver 18 for SQL Server};Server=tcp:luminadb1.database.windows.net,1433;Database=luminatb;Uid=CloudSAf5c38632;Pwd={your_password_here};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;

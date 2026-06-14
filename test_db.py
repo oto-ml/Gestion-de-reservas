@@ -5,7 +5,7 @@ import pyodbc
 server = 'luminadb1.database.windows.net'
 database = 'luminatb'
 username = 'CloudSAf5c38632'
-password = 'TU_CONTRASEÑA_AQUI' # Borra los corchetes y pon tu contraseña real
+password = 'Aegon25?' # Borra los corchetes y pon tu contraseña real
 driver = '{ODBC Driver 18 for SQL Server}' # Puede ser 17 o 18 dependiendo de tu equipo
 
 # Armamos el string de conexión (basado en el formato ODBC)
