@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System staff member or administrator",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "staff"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Guest": {
+      "title": "Guest",
+      "description": "Hotel customer record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "noShowCount": { "type": "integer" },
+        "totalBookings": { "type": "integer" },
+        "lastBookingDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Room inventory item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "number": { "type": "string" },
+        "type": { "type": "string", "enum": ["standard", "deluxe", "suite"] },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["available", "occupied", "cleaning", "maintenance"] }
+      },
+      "required": ["id", "number", "type", "price", "status"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Reservation record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "guestId": { "type": "string" },
+        "roomId": { "type": "string" },
+        "checkIn": { "type": "string", "format": "date-time" },
+        "checkOut": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "checked-in", "checked-out"] },
+        "cancellationProbability": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "msi": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "guestId", "roomId", "checkIn", "checkOut", "status"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "Managed list of staff and admins"
+    },
+    "guests": {
+      "schema": "Guest",
+      "description": "Customer CRM data"
+    },
+    "rooms": {
+      "schema": "Room",
+      "description": "Room inventory"
+    },
+    "bookings": {
+      "schema": "Booking",
+      "description": "Reservation history and schedule"
+    }
+  }
+}
