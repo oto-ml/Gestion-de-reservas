@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const sql = require('mssql');
+import express from 'express';
+import cors from 'cors';
+import sql from 'mssql';
 
 const app = express();
 app.use(cors());
@@ -9,7 +9,7 @@ app.use(express.json());
 // 1. Configuración de tu base de datos en Azure SQL
 const dbConfig = {
     user: 'CloudSAf5c38632',
-    password: 'TU_NUEVA_CONTRASEÑA', // Pon la contraseña que cambiaste
+    password: 'Aegon25?', // Pon la contraseña que cambiaste
     server: 'luminadb1.database.windows.net', 
     database: 'luminatb',
     options: {
