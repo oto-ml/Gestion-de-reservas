@@ -1,53 +1,40 @@
 import { useState } from 'react';
-import { signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../../lib/firebase';
-import { LogIn, Key, Shield, ArrowLeft } from 'lucide-react';
+import { LogIn, Key, Mail, ArrowLeft } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function StaffLogin() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError(null);
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
 
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      
-      if (!userDoc.exists()) {
-        const isAdmin = user.email === 'otorml8@gmail.com';
-        
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          name: user.displayName || 'Staff Member',
-          role: isAdmin ? 'admin' : 'staff',
-          createdAt: serverTimestamp(),
-        });
-      }
-      navigate('/staff/dashboard');
-    } catch (err: any) {
-      console.error('Detailed Login Error:', err);
-      let message = 'Error al iniciar sesión.';
-      
-      if (err.code === 'auth/popup-blocked') {
-        message = 'El navegador bloqueó la ventana emergente. Por favor, permita las ventanas emergentes para este sitio.';
-      } else if (err.code === 'auth/operation-not-allowed') {
-        message = 'El inicio de sesión con Google no está habilitado en la consola de Firebase.';
-      } else if (err.code === 'auth/popup-closed-by-user') {
-        message = 'La ventana de inicio de sesión se cerró antes de completar el proceso.';
+    try {
+      // Llamada directa a nuestro propio backend en Azure
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Guardamos el usuario en el navegador y entramos al sistema
+        localStorage.setItem('lumina_user', JSON.stringify(data.usuario));
+        navigate('/staff/dashboard');
       } else {
-        message = `Error: ${err.message || 'Intente de nuevo.'}`;
+        setError(data.error || 'Credenciales incorrectas');
       }
-      
-      setError(message);
-      await signOut(auth);
+    } catch (err) {
+      console.error('Error de conexión al backend:', err);
+      setError('Error al conectar con el servidor. Intente de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -80,43 +67,61 @@ export default function StaffLogin() {
             </div>
 
             {error && (
-              <div className="space-y-4">
-                <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-xl text-center">
-                  {error}
-                </div>
-                {error.includes('proceso') && (
-                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] rounded-xl leading-relaxed">
-                    <p className="font-bold mb-2 uppercase tracking-wider">💡 Sugerencia:</p>
-                    Si la ventana se cierra sola, intente abrir la aplicación en una <strong>pestaña nueva</strong> (fuera del editor) o verifique que su navegador permita cookies de terceros.
-                  </div>
-                )}
+              <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold rounded-xl text-center">
+                {error}
               </div>
             )}
 
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-4 bg-white hover:bg-slate-50 text-slate-900 font-bold py-5 rounded-2xl transition-all shadow-xl shadow-white/5 uppercase tracking-[0.2em] text-[10px] disabled:opacity-50"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                   <LogIn size={18} className="text-blue-500" />
-                   <span>Entrar con Google</span>
-                </>
-              )}
-            </button>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-slate-500" />
+                </div>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-4 bg-[#0F172A] border border-slate-700 text-white rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors text-sm"
+                  placeholder="Correo electrónico"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Key className="h-5 w-5 text-slate-500" />
+                </div>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-4 py-4 bg-[#0F172A] border border-slate-700 text-white rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors text-sm"
+                  placeholder="Contraseña"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-4 bg-white hover:bg-slate-50 text-slate-900 font-bold py-5 rounded-2xl transition-all shadow-xl shadow-white/5 uppercase tracking-[0.2em] text-[10px] disabled:opacity-50 mt-4"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <LogIn size={18} className="text-blue-500" />
+                    <span>Iniciar Sesión</span>
+                  </>
+                )}
+              </button>
+            </form>
 
             <div className="flex items-center gap-4 py-2">
                <div className="h-px bg-slate-700/50 flex-1" />
                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest whitespace-nowrap">Seguridad Lumina v2.0</span>
                <div className="h-px bg-slate-700/50 flex-1" />
             </div>
-
-            <p className="text-center text-[10px] text-slate-500 leading-relaxed max-w-[200px] mx-auto font-medium">
-               Su actividad será monitoreada y cifrada de extremo a extremo.
-            </p>
           </div>
         </div>
 
