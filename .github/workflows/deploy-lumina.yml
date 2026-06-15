@@ -20,18 +20,20 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies and build frontend
+        run: |
+          npm ci
+          npm run build
 
-      - name: Build app
-        run: npm run build
-
-      - name: Prepare deployment package
+      - name: Prepare lightweight deployment package
         run: |
           rm -rf deploy
           mkdir -p deploy
+          # 1. Copiamos solo lo esencial para producción
           cp server.js package.json deploy/
           cp -R dist deploy/
+          # 2. Borramos el script "build" para que Azure no intente recompilar React
+          sed -i '/"build":/d' deploy/package.json
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
