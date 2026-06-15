@@ -25,19 +25,19 @@ jobs:
           npm ci
           npm run build
 
-      - name: Prepare deployment package
+      - name: Prepare lightweight deployment package
         run: |
-          rm -rf deploy
-          mkdir -p deploy
-          cp server.js package.json package-lock.json deploy/
-          cp -R dist deploy/
-          cd deploy
-          npm ci --omit=dev
-          sed -i '/"build":/d' package.json
+          mkdir -p deploy_pkg
+          # 1. Copiamos solo lo que necesita el servidor de producción
+          cp server.js package.json package-lock.json deploy_pkg/
+          cp -R dist deploy_pkg/
+          # 2. Modificamos el JSON de forma segura para borrar los scripts de React.
+          # Esto evita que Azure intente recompilar la aplicación y falle.
+          node -e "const fs=require('fs'); let p=JSON.parse(fs.readFileSync('deploy_pkg/package.json')); delete p.scripts.build; delete p.scripts.dev; delete p.scripts.preview; fs.writeFileSync('deploy_pkg/package.json', JSON.stringify(p, null, 2));"
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: Lumina
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: deploy
+          package: deploy_pkg
