@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import sql from 'mssql';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 
@@ -104,6 +106,18 @@ app.post('/api/reservas', async (req, res) => {
         console.error("❌ Error en la base de datos al guardar:", err);
         res.status(500).json({ error: 'Error al intentar guardar en Azure SQL' });
     }
+});
+
+// --- CONEXIÓN CON EL FRONTEND ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 1. Servir los archivos estáticos compilados de React
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// 2. Cualquier ruta web que el usuario escriba, redirigirla a React
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Asignación de puerto para evitar choques con React
