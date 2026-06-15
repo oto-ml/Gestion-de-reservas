@@ -14,11 +14,30 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # Mandamos el código fuente limpio y ligero. 
-      # Azure se encargará nativamente de hacer el npm install y npm run build.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies and build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare deployment package
+        run: |
+          rm -rf deploy
+          mkdir -p deploy
+          cp server.js package.json package-lock.json deploy/
+          cp -R dist deploy/
+          cd deploy
+          npm ci --omit=dev
+          sed -i '/"build":/d' package.json
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: Lumina
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+          package: deploy
