@@ -116,9 +116,9 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // 2. Cualquier ruta web que el usuario escriba, redirigirla a React
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// app.get('*', (req, res) => {
+   // res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+//});
 
 // Asignación de puerto para evitar choques con React
 const PORT = process.env.PORT || 3001;
