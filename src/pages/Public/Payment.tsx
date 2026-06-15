@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { CreditCard, ShieldCheck, Lock, ChevronLeft, Zap } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
-// import { predictCancellation } from '../../services/gemini'; // Déjalo comentado por ahora
 
 export default function Payment() {
   const location = useLocation();
@@ -28,21 +27,21 @@ export default function Payment() {
     }
   }, [total, cardNumber]);
 
- const handlePayment = async () => {
+  const handlePayment = async () => {
     setLoading(true);
     try {
       // 1. Detección automática del entorno (Local vs Producción en Azure)
       const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       const BACKEND_URL = isLocal 
         ? 'http://localhost:3001' 
-        : 'https://lumina-axgngkgzach3era9.mexicocentral-01.azurewebsites.net'; // URL pública de tu App Service
+        : 'https://lumina-axgngkgzach3era9.mexicocentral-01.azurewebsites.net';
 
       // 2. Calculamos los días de anticipación
       const checkInDate = new Date(checkIn);
       const hoy = new Date();
       const diasAnticipacion = Math.ceil((checkInDate.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
 
-      // 3. Mandamos el paquete de datos a la URL dinámica detectada
+      // 3. Mandamos el paquete de datos a Azure SQL
       const response = await fetch(`${BACKEND_URL}/api/reservas`, {
         method: 'POST',
         headers: {
@@ -63,7 +62,6 @@ export default function Payment() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // 4. ¡Éxito! Redirigimos a la confirmación con el folio real
         navigate(`/confirmation/${data.folio || 'AZURE-OK'}`, { 
           state: { 
             id: data.folio || 'Exitoso',
@@ -80,7 +78,7 @@ export default function Payment() {
 
     } catch (error) {
       console.error("Error conectando al backend:", error);
-      alert('Error al procesar la reserva. Revisa la consola de red (F12).');
+      alert('Error al procesar la reserva. Revisa la consola de red.');
     } finally {
       setLoading(false);
     }
@@ -224,9 +222,9 @@ export default function Payment() {
                  <Lock size={24} />
               </div>
               <div className="space-y-2">
-                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Seguridad Predictiva</h4>
+                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">Seguridad Integral</h4>
                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                    Su reserva será validada por nuestro motor de riesgo IA para garantizar su lugar.
+                    Su reserva será procesada y protegida en nuestra infraestructura en la nube.
                  </p>
               </div>
            </div>
