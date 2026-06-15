@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
 import { motion } from 'motion/react';
 import { CreditCard, ShieldCheck, Lock, ChevronLeft, Zap } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
-import { predictCancellation } from '../../services/gemini';
+// import { predictCancellation } from '../../services/gemini'; // Déjalo comentado por ahora
 
 export default function Payment() {
   const location = useLocation();
@@ -30,65 +28,59 @@ export default function Payment() {
     }
   }, [total, cardNumber]);
 
-  const handlePayment = async () => {
+ const handlePayment = async () => {
     setLoading(true);
     try {
-      const historyQ = query(collection(db, 'guests'), where('email', '==', guest.email), limit(5));
-      const historySnap = await getDocs(historyQ);
-      const history = historySnap.docs.map(d => d.data());
-      
-      const { probability } = await predictCancellation({ 
-        checkIn, 
-        checkOut, 
-        roomId: room.id 
-      }, history);
+      // 1. Detección automática del entorno (Local vs Producción en Azure)
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const BACKEND_URL = isLocal 
+        ? 'http://localhost:3001' 
+        : 'https://lumina-axgngkgzach3era9.mexicocentral-01.azurewebsites.net'; // URL pública de tu App Service
 
-      let guestId = guest.email.replace(/@|\./g, '_');
-      if (historySnap.empty) {
-        await addDoc(collection(db, 'guests'), {
-          id: guestId,
-          ...guest,
-          noShowCount: 0,
-          totalBookings: 1,
-          lastBookingDate: new Date().toISOString(),
-          createdAt: serverTimestamp()
+      // 2. Calculamos los días de anticipación
+      const checkInDate = new Date(checkIn);
+      const hoy = new Date();
+      const diasAnticipacion = Math.ceil((checkInDate.getTime() - hoy.getTime()) / (1000 * 3600 * 24));
+
+      // 3. Mandamos el paquete de datos a la URL dinámica detectada
+      const response = await fetch(`${BACKEND_URL}/api/reservas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: guest.name,
+          email: guest.email,
+          telefono: guest.phone || '5500000000',
+          idHabitacion: parseInt(room.id) || 1,
+          fechaIngreso: checkIn,
+          fechaSalida: checkOut,
+          diasAnticipacion: diasAnticipacion > 0 ? diasAnticipacion : 1,
+          probabilidadCancelacion: 12.50
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // 4. ¡Éxito! Redirigimos a la confirmación con el folio real
+        navigate(`/confirmation/${data.folio || 'AZURE-OK'}`, { 
+          state: { 
+            id: data.folio || 'Exitoso',
+            guest, 
+            total, 
+            checkIn, 
+            checkOut,
+            room
+          } 
         });
+      } else {
+        throw new Error(data.error || 'El servidor rechazó la conexión');
       }
 
-      const bookingData = {
-        guestId,
-        guestName: guest.name,
-        guestEmail: guest.email,
-        roomId: room.id,
-        roomNumber: room.number,
-        roomType: room.type,
-        checkIn,
-        checkOut,
-        totalPrice: total,
-        status: 'confirmed',
-        cancellationProbability: probability || 0.1,
-        paymentMethod: 'credit_card',
-        lastFour: cardNumber.slice(-4),
-        msi: selectedMsi > 0,
-        msiMonths: selectedMsi,
-        createdAt: serverTimestamp()
-      };
-
-      const bookingRef = await addDoc(collection(db, 'bookings'), bookingData);
-
-      navigate(`/confirmation/${bookingRef.id}`, { 
-        state: { 
-          id: bookingRef.id,
-          guest, 
-          total, 
-          checkIn, 
-          checkOut,
-          room
-        } 
-      });
     } catch (error) {
-      console.error(error);
-      alert('Error al procesar la reserva. Intente de nuevo.');
+      console.error("Error conectando al backend:", error);
+      alert('Error al procesar la reserva. Revisa la consola de red (F12).');
     } finally {
       setLoading(false);
     }

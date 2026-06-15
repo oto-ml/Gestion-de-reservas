@@ -3,27 +3,29 @@ import cors from 'cors';
 import sql from 'mssql';
 
 const app = express();
-app.use(cors());
+
+// Gestión de Puertos y Control de Acceso (CORS)
+app.use(cors()); // Permite que tu frontend de React se conecte
 app.use(express.json());
 
-// Ruta de prueba para saber si el servidor está vivo
-app.get('/', (req, res) => {
-    res.send('Backend de Lumina funcionando perfectamente en Azure 🚀');
-});
-
-// 1. Configuración de tu base de datos en Azure SQL
+// Verificación de Credenciales e Infraestructura (Azure SQL)
 const dbConfig = {
     user: 'CloudSAf5c38632',
-    password: 'Aegon25?', // Pon la contraseña que cambiaste
+    password: 'Aegon25?', // ⚠️ ¡IMPORTANTE: Reemplaza esto con tu contraseña real!
     server: 'luminadb1.database.windows.net', 
     database: 'luminatb',
     options: {
-        encrypt: true, 
-        trustServerCertificate: false
+        encrypt: true, // Requerido obligatoriamente por Azure
+        trustServerCertificate: false // Recomendado para producción
     }
 };
 
-// 2. Endpoint de Login conectado a Azure (Tabla Usuarios)
+// Ruta base para confirmar que el servidor está encendido en la nube
+app.get('/', (req, res) => {
+    res.send('Backend de Lumina funcionando perfectamente 🚀');
+});
+
+// Endpoint de Autenticación (Staff)
 app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -34,65 +36,78 @@ app.post('/api/login', async (req, res) => {
             .input('password', sql.NVarChar, password)
             .query('SELECT Id_usuario, Username, Rol FROM [dbo].[Usuarios] WHERE Email = @email AND Password_hash = @password');
 
-        if (result.recordset.length > 0) {
+        if (result.recordset && result.recordset.length > 0) {
+            // Devolvemos el usuario sin la contraseña por seguridad
             res.status(200).json({ success: true, usuario: result.recordset[0] });
         } else {
             res.status(401).json({ success: false, error: 'Credenciales incorrectas' });
         }
     } catch (err) {
-        console.error("Error en login:", err);
-        res.status(500).json({ error: 'Error del servidor' });
+        console.error("❌ Error en login:", err);
+        res.status(500).json({ error: 'Error interno del servidor al autenticar' });
     }
 });
 
-// 3. Endpoint de Reservas conectado a Azure (Tablas Clientes y Reservas)
+// Endpoint de Reservaciones (Público)
 app.post('/api/reservas', async (req, res) => {
     const { nombre, email, telefono, idHabitacion, fechaIngreso, fechaSalida, diasAnticipacion, probabilidadCancelacion } = req.body;
 
     try {
         const pool = await sql.connect(dbConfig);
         
-        // Verificar si el cliente existe, si no, insertarlo
+        // 1. Verificar si el cliente existe, si no, insertarlo
         let idCliente;
         const clienteCheck = await pool.request()
             .input('email', sql.NVarChar, email)
             .query('SELECT Id_cliente FROM [dbo].[Clientes] WHERE Email = @email');
 
-        if (clienteCheck.recordset.length > 0) {
+        if (clienteCheck.recordset && clienteCheck.recordset.length > 0) {
             idCliente = clienteCheck.recordset[0].Id_cliente;
         } else {
+            // Se usa OUTPUT INSERTED para recuperar el ID del nuevo cliente de forma segura
             const nuevoCliente = await pool.request()
                 .input('nombre', sql.NVarChar, nombre)
                 .input('email', sql.NVarChar, email)
-                .input('telefono', sql.NVarChar, telefono)
-                .query('INSERT INTO [dbo].[Clientes] (Nombre, Email, Telefono, Historial_cancelaciones) OUTPUT INSERTED.Id_cliente VALUES (@nombre, @email, @telefono, 0)');
+                .input('telefono', sql.NVarChar, telefono || '0000000000')
+                .query(`
+                    INSERT INTO [dbo].[Clientes] (Nombre, Email, Telefono, Historial_cancelaciones) 
+                    OUTPUT INSERTED.Id_cliente 
+                    VALUES (@nombre, @email, @telefono, 0)
+                `);
             idCliente = nuevoCliente.recordset[0].Id_cliente;
         }
 
-        // Crear la reserva
+        // 2. Crear la reserva enlazada al cliente
         const nuevaReserva = await pool.request()
             .input('idCliente', sql.Int, idCliente)
-            .input('idHabitacion', sql.Int, idHabitacion || 1) // Por defecto habitación 1 si no se envía
+            .input('idHabitacion', sql.Int, idHabitacion || 1)
             .input('fechaIngreso', sql.Date, fechaIngreso)
             .input('fechaSalida', sql.Date, fechaSalida)
             .input('diasAnticipacion', sql.Int, diasAnticipacion || 30)
-            .input('prob', sql.Decimal(5,2), probabilidadCancelacion || 15.5) // Resultado del ML
+            .input('prob', sql.Decimal(5,2), probabilidadCancelacion || 15.5)
             .query(`
                 INSERT INTO [dbo].[Reservas] 
                 (Id_cliente, Id_habitacion, Fecha_ingreso, Fecha_salida, Dias_anticipacion, Probabilidad_cancelacion, Estado_reserva) 
+                OUTPUT INSERTED.Id_reserva
                 VALUES 
                 (@idCliente, @idHabitacion, @fechaIngreso, @fechaSalida, @diasAnticipacion, @prob, 'Confirmada')
             `);
 
-        res.status(201).json({ success: true, mensaje: 'Reserva guardada en Azure SQL' });
+        // 3. Responder al frontend con el folio (Id_reserva) generado en la nube
+        res.status(201).json({ 
+            success: true, 
+            mensaje: 'Reserva guardada en Azure SQL exitosamente',
+            folio: nuevaReserva.recordset[0].Id_reserva
+        });
 
     } catch (err) {
-        console.error("Error al guardar reserva:", err);
-        res.status(500).json({ error: 'Error en la base de datos' });
+        console.error("❌ Error en la base de datos al guardar:", err);
+        res.status(500).json({ error: 'Error al intentar guardar en Azure SQL' });
     }
 });
 
+// Asignación de puerto para evitar choques con React
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
+    console.log(`✅ Servidor Backend corriendo y escuchando en el puerto ${PORT}`);
 });
