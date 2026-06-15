@@ -25,15 +25,16 @@ jobs:
           npm ci
           npm run build
 
-      - name: Prepare lightweight deployment package
+      - name: Prepare complete deployment package
         run: |
           rm -rf deploy
           mkdir -p deploy
-          # 1. Copiamos solo lo esencial para producción
-          cp server.js package.json deploy/
+          # 1. Copiar código fuente
+          cp server.js package.json package-lock.json deploy/
           cp -R dist deploy/
-          # 2. Borramos el script "build" para que Azure no intente recompilar React
-          sed -i '/"build":/d' deploy/package.json
+          # 2. Instalar dependencias de producción directamente en el paquete
+          cd deploy
+          npm ci --omit=dev
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
